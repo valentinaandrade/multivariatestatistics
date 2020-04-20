@@ -1,0 +1,768 @@
+---
+title: "Práctica 2. Estadística Descriptiva y Correlacional"
+subtitle: "Estadistica Multivariada - Sociología FACSO Universidad de Chile"
+author: "Valentina Andrade"
+linktitle: "Práctica 2"
+date: "2020-01-10"
+class_date: "2020-04-23"
+citeproc: false
+bibliography: ../../static/bib/references.bib
+csl: ../../static/bib/chicago-syllabus-no-bib.csl
+output:
+  blogdown::html_page:
+    template: ../../pandoc/toc-title_html.template
+    toc: true
+    highlight: tango
+    number_sections: FALSE
+menu:
+  class:
+    parent: Practicas
+    weight: 1
+type: docs
+weight: 1
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+Sys.setlocale("LC_ALL", "ES_ES.UTF-8")
+```
+
+# Presentación
+
+##  Objetivo de la práctica
+
+Este material tiene como propósito resumir los análisis en R correspondientes a los cursos de Estadística Descpritiva y Correlacional, que son necesarios para luego poder aplicar los contenidos más específicos de este curso. Esta guía servirá para su trabajo final, pero no todos los análisis señalados serán para su utilidad. 
+
+En este curso vamos a distinguir **dos momentos** del trabajo con datos: procesamiento y análisis.
+
+  - **Procesamiento** corresponde a lo que se conoce generalmente como "limpieza", es decir, realizar las modificaciones necesarias para poder efectuar los análisis. Estas modificaciones previas al análisis son necesarias ya que los datos originales con los que se va a trabajar en general no vienen perfectamente adaptados a los análisis que se quieren hacer. Por lo tanto, en cuanto a datos también hacemos la distinción entre datos originales y datos procesados.
+
+  - **Análisis**: se relaciona principalmente con análisis descriptivos asociados a las preguntas de investigación y también modelamiento de datos para contrastar hipótesis de investigación.
+
+Tanto el procesamiento como el análisis quedan registrados en un documento de código, en este caso de código R (por lo general, un archivo con extensión .R). El documento de código de análisis posee 5 partes, más una sección de identificación inicial:
+
+0. Identificación y descripción general: Título, autor(es), fecha, información breve sobre el contenido del documento
+1. Librerías principales (de R) a utilizar en el análisis
+2. Carga de datos
+  - Esta base de datos proviene de **procesamiento**
+3. Selección de variables a utilizar
+  - Explorar variables de la base de datos importada
+  - Seleccionar *solo* variables relevantes para el ejercicio de análisis a realizar en ese documento de código. 
+  - Descripción de variables: señalar definición y niveles de medición
+  - Manipulación de variables y datos (en caso de ser necesario)
+4. Análisis descriptivo uni y bivariado. Esto puede incluir: 
+  - Tablas univariada y de contingencia
+  - Gráficos de densidad, nube, barra de frecuencia, pirámides e histograma
+5. Análisis correlacional
+  - Tablas
+  - Gráficos de caja
+  - Gráficos de dispersión
+6. Análisis principal
+  - Señalar hipótesis 
+  - Estimación del modelo o prueba principal 
+  - Ajuste del modelo o prueba principal
+
+Al final de esta práctica la idea es que cada un_ tenga los principales análisis que *podrían ser útiles* para el punto 4 y 5 de su propio documento de análisis de datos. 
+
+En la práctica seguiremos utilizando la base de datos procesada en el Práctico 1. 
+
+# Análisis de datos con ELSOC 2016
+
+## 0. Antecedentes de los datos a utilizar
+
+El Estudio Longitudinal Social de Chile [(ELSOC)](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/0KIRBJ) es un estudio longitudinal de tipo panel, que consiste en encuestar a casi 3.000 chilenos, anualmente, a lo largo de una década. ELSOC ha sido diseñado para evaluar la manera cómo piensan, sienten y se comportan los chilenos en torno a un conjunto de temas referidos al conflicto y la cohesión social en Chile. 
+
+Uno de los módulos de **ELSOC** es "Desigualdad y Legitimidad". Este módulo busca estudiar las percepciones y atribuciones asociadas a las desigualdades sociales. Se ve motivado por el interés de comprender cómo las personas perciben, legitiman y reproducen las diferencias de ingresos, estatus y poder presentes en el Chile contemporáneo.
+
+El presente ejercicio tiene por objetivo el procesar los datos para obtener las variables relevante para el estudio de la **Percepción de Meritocracia**, entendida como el grado en que los individuos consideran que su sociedad cumple con los principios de una meritocracia, es decir, que funciona como un sistema que asigna recompensas en función del esfuerzo y las habilidades.
+
+## 1. Librerías principales (de R) a utilizar en el análisis
+
+### Cargar librerías
+
+Las librerías que vamos a utilizar principalmente son `dplyr` (ajuste general de datos), `stargazer` (tablas) y `ggplot` (gráficos). A diferencia de la práctica anterior, se utilizarán muchas librerías de modo de poder mostrarles la mayoría de los  posibles estadísticos a realizar en esta parte del análisis. 
+
+Una gran diferencia con el procesamiento es que será muy relevante tanto calcular estadísticos como su presentación (en tablas y gráficos). 
+
+Para el caso de las librerías, se recomienda el uso de `pacman` que nos permite cagar masivamente nuestras librerías. También se recomienda utilizar el signo **`#`** para comentar y dejar en claro el contenido/función que cumplirá cada una de éstas en nuestro trabajo. 
+
+```{r,message=FALSE,warning=FALSE}
+
+#1. Instalar paquete pacman que nos permite cargar masivamente nuestras librerías
+
+if (!require("pacman"))install.packages("pacman")
+
+#2. Librerías a utilizar
+
+#2.1 Librerias para analisis descriptivo
+
+pacman::p_load("knitr", #Generacion de informes dinamicos
+               "dplyr", #Manipulacion de datos
+               "Rmisc", # Resumen de estadisticos univariados
+               "kableExtra", #Tablas
+               "sjPlot",#Tablas
+               "stargazer", #Tablas
+               "ggplot2", #Graficos
+               "gridExtra", #Graficos
+               "scales", #Graficos con porcentaje
+               "car") #Recodificacion de variables
+              
+
+# 2.2 Librerias para analisis correlacional
+
+pacman::p_load("ggpubr", #Graficos de dispersion
+               "plyr", #Resume estadisticos por grupo
+               "Publish",#Intervalos de confianza
+               "Rmisc", #summarise
+               "psych",  #D cohen
+               "sjstats") # Pruebas Anova, Eta, Cramer's V, Phi, Spearman's, Rho, Kendall's y  Pearson)
+```
+
+## 2. Cargar base de datos
+
+**Espacio de trabajo**
+
+Previo a la carga de nuestra base de datos, ejecutamos las siguientes líneas:
+
+```{r}
+rm(list=ls())       # borrar todos los objetos en el espacio de trabajo
+options(scipen=999) # valores sin notacion cientifica
+```
+
+**Datos**
+
+Las bases de datos se pueden cargar de un archivo local o en línea. Para este caso utilizaremos el archivo que producimos en el Practico 1: **ELSOC_ess_merit2016.RData**.
+
+La base se agrega como un objeto al espacio de trabajo con el nombre original "`elsoc_2016`". Para facilitar los análisis se le cambia el nombre simplemente a `elsoc` con la segunda instrucción
+
+```{r eval=FALSE}
+#Cargamos la base de datos desde internet
+#load(url("https://multivariada.netlify.com/assignment/data/original/ELSOC_ess_merit2016.RData"))
+
+#Creamos un objeto llamado elsoc que es identico a elsoc_2016, luego eliminamos elsoc_2016
+#elsoc <- elsoc_16; remove(elsoc_16) 
+```
+
+Otra opción es cargarla desde un archivo local
+
+```{r,message=FALSE,warning=FALSE}
+load("ELSOC_ess_merit2016.RData") #Cargar base de datos
+elsoc <- elsoc_16; remove(elsoc_16)
+```
+
+## 3. Selección de variables a utilizar
+
+3.1  Explorar base de datos importada
+
+```{r}
+names(elsoc) #Muestra los nombres de las variables de la base de datos
+dim(elsoc) #Dimensiones
+```
+ 
+3.2 Seleccionar *solo* variables relevantes
+  
+Se seleccionaron para el ejercicio las variables ess, merit, edcine, sexo y edad 
+
+```{r}
+#Seleccionar variables (dplyr)
+
+data <- elsoc%>% 
+  dplyr::select(ess, merit, edcine, sexo, edad)
+
+
+rm(elsoc) #Borramos base que ya no utilizamos
+
+names(data) #nombre variables
+dim(data) #dimensiones
+class(data) #clase
+
+data <- as.data.frame(data) #En nuestro caso ya es un data frame. Pero en caso de que sus bases de datos no lo sean se transformar a data frame para uso de stargazer
+
+summary(data) #Resumen de variables seleccionadas
+```
+
+3.3 Descripción de variables
+Las variables seleccionadas son 
+
+* [`merit`] = Indice promedio de percepcion de meritocracia en base a grado de acuerdo sobre recompensa en `c18_09`(por esfuerzos) y `c18_10` (por inteligencia), en escala de 0 a 100. 
+
+* [`ess`] = Estatus Social Subjetivo: Donde se ubicaria ud. en la sociedad chilena" (0 = el nivel mas bajo; 10 = el nivel mas alto)
+
+* [`edcine`] = Nivel educacional(1 = Primaria incompleta menos, 2 = Primaria y secundaria baja, 3 = Secundaria alta, 4 = Terciaria ciclo corto, 5 = Terciaria y Postgrado)
+
+* [`sexo`] = Sexo (O = Hombre; 1 = Mujer)
+
+* [`edad`] = ¿Cuáles su edad? (años cumplidos)
+
+3.3 Manipulación de variables y datos
+
+A pesar de que los datos cargados ya están procesados, muchas veces para los análisis son utilizados con distintos objetivos. Por ello alguno de los procedimientos del Practico 1 pueden ser repetidos en Practico 2. 
+
+## 4. Estadística descriptiva 
+
+La estadística descriptiva nos brindará las caracteristicas generales y la naturaleza de nuestros datos a analizar. Para poder explorarlos podremos utilizar distintas herramientas como tablas y gráficos. Estas variarán según el nivel de medición de las variables (cuantitativas o categóricas) o de si estamos describiendo una o más variables (uni o bivarada).
+
+### 4.1 Análisis descriptivos Univariados
+
+#### 4.1.1 Tablas
+
+##### A. Para variables cuantitativas
+
+La función `stargazer` permitirá  mostrar los principales estadísticos descriptivos univariados de las variables cuantitativas, es decir, medidas de tendencia central (media), de disperción (desviación estándar) y posición (mínimo, máximo, percentiles).  
+
+```{r}
+#Para verlo en la Consola de R
+stargazer(data,type = "text") 
+# Podrán notar que no deben señalar cuales son las variables cuantitativas
+
+#Para guardarlo como excel 
+## Deben señalar la carpeta de destino
+##stargazer(elsoc_16,type = "html",out = "...ruta.../sum.xls") 
+```
+
+La función `kable` nos permite crear una tabla como la anterior pero en formato académico. Para esta funcion solo es necesario incluir como objeto una tabla con la variable de interés.
+
+Imaginemos que nos interesa poder hacer una tabla con tramos de edad. Es decir, transformaríamos `edad` a la variable categórica `t_edad`
+
+```{r,echo=FALSE}
+#1. Primero, exploramos los datos
+summary(data$edad)
+
+#2. Agrupamos en tres categorías con mutate (dplyr):
+#grupo1: 18 a 33
+#grupo2: 34 a 45
+#grupo 3: 50+
+
+data = data %>% mutate(t_edad = ifelse(edad <= 33, 1, #grupo 1
+                         ifelse(edad >= 50, 3, #grupo 3
+                                2))) #grupo 2
+
+### ¡¡ Ojo !! creamos un variable nueva (t_edad) pues nos interesa ver los tramos, no necesariamente transformar la variable para el análisis (data$t_edad)
+
+#3. Asignamos etiquetas 
+data$t_edad <- factor(data$t_edad, levels = c(1:3), labels = c("18 a 33", "34 a 45", "50+"))
+```
+
+Luego de la transformación, creamos el objeto tabla_edad que será incorporado en la función kable
+
+```{r,echo=FALSE}
+#Con paquete dplyr creamos objeto "tabla_edad"
+tabla_edad <-  data %>% #creamos objeto "tabla_edad"
+  dplyr::count(t_edad) %>% #n de casos
+  mutate(Proporcion = prop.table(n))#proporción
+
+```
+
+
+```{r, echo=FALSE}
+# Tabla formato académico 
+kable(tabla_edad,caption="Estadísticas descriptivas tramos de edad", col.names=c("Categorías","Obs.","Proporción"),digits = 3)
+#título, nombres columnas y dígitos
+
+```
+
+
+
+##### B. Para variables categóricas
+
+La función `view_df` del paquete `sjPlot` hace resumen de las categorías de respuesta de las variables y frecuencia por cada una de ellas (acumulada y relativa).
+
+```{r}
+#Para verlo en R
+##Debemos señalar las variables categoricas (las que no salieron en la tabla anterior)
+sjPlot::view_df(data[,c("edcine","sexo")], 
+                show.frq = TRUE,
+                show.prc = TRUE)
+
+#Para verlo en excel
+##Debemos señalar las variables categoricas y la carpeta donde se guardará
+
+# sjPlot::view_df(data[,c("edcine","sexo")], 
+#                 show.frq = TRUE,
+#                 show.prc = TRUE,
+#                 file = "...ruta.../freq.xls") 
+
+```
+
+
+
+##### 4.1.2 Graficos
+
+Los gráficos univariados son utilizados para representar la distribución de las variables. En el siguiente apartado les presentaremos algunos de ellos, pero en caso de querer profundizar en ello véase [aquí](http://www.sthda.com/english/articles/32-r-graphics-essentials/133-plot-one-variable-frequency-graph-density-distribution-and-more/#histogram-plots)
+
+##### A. Para variables cuantitativas
+
+**Histogramas**
+
+```{r}
+#Variable merit
+histogram1 <- hist.default(x = data$merit)
+histogram1
+
+## Si quieren guardarlo se agrega la línea de codigo png y dev.off
+# png("...ruta.../histogram1.png",width=600,height=600)
+# hist.default(x = data$merit)
+# dev.off()
+
+#Variable ess
+hist.default(x = data$ess)
+
+```
+
+**Graficos de densidad**
+
+```{r}
+densityplot <- ggplot(data, aes(x = edad)) + geom_density() + theme_bw()
+
+densityplot
+
+#Luego ustedes pueden agregarle titulos y etiqueta a los ejes
+
+## Si quieren guardarlo se agrega la línea de codigo png y dev.off
+# png("...ruta.../densityplot.png",width=600,height=600)
+# ggplot(data, aes(x = edad)) + geom_density() + theme_bw()
+# dev.off()
+```
+
+
+##### B. Para variables categóricas
+
+**Gráficos de barras de frecuencias**
+
+```{r}
+
+plot_edcine <- sjPlot::plot_frq(data = data$edcine) + theme_bw()
+
+plot_edcine
+##Para guardar el grafico
+# ggplot2::ggsave(filename = "output/images/graph03.png",plot = plot_edcine,device = "png",units = "cm",width = 20,height = 20)
+
+
+```
+
+
+*Otras opciones*
+
+Supongamos que nos interesa graficar la distribución univariada porcentual de ambas variables categóricas `edcine` y `sexo`, pero presentarlas enconjunto. Para ello utilizaremos la función `ggplot`, `geom_bar` y `grid.arrange`
+
+```{r}
+#Primero generamos los dos gráficos como objetos
+g_sexo <- ggplot(data, aes(x=sexo)) + geom_bar(aes(y = (..count..)/sum(..count..))) + 
+        scale_y_continuous(labels=percent) + labs(x="Sexo", y="Porcentaje") + theme_bw()
+g_edcine=ggplot(data, aes(x=edcine)) + geom_bar(aes(y = (..count..)/sum(..count..))) + 
+        scale_y_continuous(labels=percent, limits = c(0,0.6)) + labs(x="Nivel Educacional", y="Porcentaje") + theme_bw()
+
+```
+
+```{r, echo=FALSE, warning=FALSE,,fig.width=12, fig.height=4}
+grid.arrange(g_sexo, g_edcine, ncol = 2,top="Distribuciones variables categóricas")
+```
+
+
+### 4.2 Análisis Descriptivo Bivariado
+
+#### 4.2.1 Tablas 
+
+##### A. Entre variables cuantitativas y categóricas
+
+La función `kable` tambien nos permite resumir las características de dos variables. Un ejemplo podría ser una tabla donde podamos ver la distribución de `merit` según `sexo`
+
+```{r, echo=FALSE}
+tabla_merit=data %>% 
+  dplyr::group_by(sexo) %>% #agrupar
+  dplyr::summarise(Obs.=n(),Promedio=mean(merit),Desviacion=sd(merit)) #n de casos, promedio y desviación estándar
+```
+
+```{r,echo=FALSE}
+kable(tabla_merit,caption="Estadísticas descriptivas merito según sexo",col.names=c("Categorías","Obs.","Promedio","Desviación Estándar"))
+#título, nombres columnas y dígitos
+```
+
+##### B. Entre variables categóricas 
+
+**Tablas de contingencia**  
+
+Existen distintos tipos de tablas de frecuencia y proporciones. Ellas pueden indicar la distribución absoluta, conjunta o relativa
+
+1. Tabla de frecuencias observadas
+
+```{r echo=TRUE}
+table(data$edcine,data$sexo,exclude = FALSE)
+
+```
+
+2. Tabla de proporciones
+
+```{r echo=TRUE}
+## Tabla de proporciones por columna (margin = 2)
+prop.table(table(data$edcine,data$sexo,exclude = FALSE),margin = 2) 
+
+##Tabla de proporciones por fila (margin =1)
+prop.table(table(data$edcine,data$sexo,exclude = FALSE),margin = 1)
+
+#Si se fijan, el 100% será el nivel educacional. Si elijo columnas o filas dependerá de cuál es mi variable de interés
+```
+
+3.  Tabla de frecuencias marginales
+
+```{r, echo=TRUE}
+margin.table(table(data$edcine,data$sexo), 1) #Variable nivel educacional 
+margin.table(table(data$edcine,data$sexo), 2) #Variable sexo
+```
+
+
+#### 4.2.2 Graficos
+
+##### A. Variables cuantitativas
+
+**Graficos de burbújas**
+
+Para representar la distribucion de dos variables continuas se utilizan comunmente las *nubes de punto* o *gráficos de burbújas*. Para ello utilizaremos la función `ggplot`y `geom_point`. Para profundizar en formatos véase [aquí](http://www.sthda.com/english/articles/32-r-graphics-essentials/131-plot-two-continuous-variables-scatter-graph-and-alternatives/#color-by-a-continuous-variable)
+  
+```{r}
+#Podran notar que ahora en "aes" aparecen las dos variables que nos interesan representar. 
+
+#Distinguimos los puntos segun nivel educacional
+
+ggplot(data, aes(x = edad, y = merit)) + geom_point(aes(color = edcine), alpha = 0.5) +
+  scale_color_manual(values = c("red", "green", "blue", "yellow", "pink")) +
+  scale_size(range = c(0.5, 12))
+```
+  
+##### B. Variables categóricas y continuas
+
+En general, se utilizan gráficos de barras pero que pueden ser desarrollados en distintos formatos. Para ello recomendamos el uso de la función `ggplot` y `geom_bar`
+
+**Pirámides**
+
+Una opción muy utilizada son las pirámides, sobre todo para comparar datos poblacionales por sexo. 
+
+```{r, warning=FALSE}
+
+ggplot(data, aes(x = edad, y = merit, fill = sexo)) + 
+  geom_bar(subset = .(sexo == "Mujer"), stat = "identity") + 
+  geom_bar(subset = .(sexo == "Hombre"), stat = "identity") +
+  scale_fill_brewer(palette = "Set1") + 
+  theme_bw() 
+
+```
+
+##### C. Variables categóricas
+
+También son utilizados los gráficos de barra y el procedimiento es el mismo solo que en el argumento del grafico se indican dos variables categoricas.
+
+**Graficos de barra**
+
+```{r}
+
+ggplot(data, aes(t_edad, ..count..)) + geom_bar(aes(fill = sexo), position = "dodge") + theme_bw()
+
+```
+
+
+## 5. Estadística correlacional 
+
+La estadística inferencial hace uso de métodos que utilizan una *muestra* para inferir sus propiedades acerca de una *población*.
+
+En ella podemos encontrar técnicas como los (a) **intervalos de confianza** que nos permiten realizar estimaciones sobre un parámetro problacional o (b) **pruebas de hipótesis** que testean la existencia de diferencias e igualdades de ciertos estimadores, es decir, la existencia de relaciones o asociación entre ciertas variables. 
+
+Profundizaremos más en los contenidos e interpretaciones de la inferencia estadística cuando revisemos la **regresión lineal simple** en las sesiones de clase y Practico 3. 
+
+Una vez que nos hemos familiarizado con las características principales de nuestras variables (estadística descriptiva) podemos dar paso a las técnicas de asociación entre ellas. 
+
+
+### 5.1 Intervalos de confianza
+
+Permiten realizar estimaciones sobre un parámetro problacional. Por ejemplo, queremos saber si existen diferencias a nivel poblacional entre el `ess` y `sexo`.
+
+Para ello utilizaremos la función `ci.mean` del paquete `Publish` que nos entrega tanto la media poblacional, intervalos de confianza y nivel de confianza.
+
+```{r}
+#Intervalo de confianza merito y sexo
+#>$H_0$: El estatus subjetivo medio de las mujeres y hombres son iguales 
+#>$H_1$: El estatus subjetivo medio del trabajo de las mujeres son mayores que de los hombres
+
+#Para un 95% de confianza,
+ci.mean(ess~sexo, data =data)
+
+# Si se quiere paraun 99% se agrega alpha= 0.01
+ci.mean(ess~sexo, data =data, alpha = 0.01 )
+```
+
+
+**Tabla Intervalos de confianza**
+
+```{r}
+ci95 <- as.data.frame(ci.mean(ess~sexo, data=data))
+
+kable(ci95[c(1,3,4,6,2)], caption = "Estimación de un intevalo de confianza para media de merito al 95%",
+      align = 'c', digits = round(2),
+      col.names = c("Media", "Límite inferior","Límite superior",
+                    "Nivel de confianza","Error estándar"))
+```
+
+
+
+**Gráfico de cajas**
+
+Una forma de representar los intervalos de confianza es a través de gráficos de caja. Para ello utilizamos primero resumimos los resultados de los intervalos de confianza por `summarySE` de `Rmisc`, y luego graficamos por `ggplot` y `geom_errorbar`
+
+```{r echo=FALSE}
+ci95g <- summarySE(data, measurevar="ess", groupvars=c("sexo")) #creamos variables para graficar
+names(ci95g)
+```
+  
+```{r,echo=FALSE,comment=FALSE, warning=FALSE}
+ggplot(ci95g, aes(x=sexo, y=ess)) +
+    geom_errorbar(aes(ymin=ess-ci, ymax=ess+ci), width=.1) +
+    geom_line() +
+    geom_point() +
+    labs(x="Sexo", y="Estatus Social Subjetivo") + theme_bw()
+
+#geom line y geom point agregan otros elementos
+```
+
+
+### 5.2 Pruebas de hipótesis {.tabset}
+
+Las **pruebas de hipótesis** indican asociación y además incluyen el tamaño efecto de esa relación. 
+  - Asociación: dirección de relación entre variables
+  - Tamaño efecto: magnitud de  relación. 
+
+- La prueba de hipótesis a utilizar va a depender del nivel de medición de las variables a relacionar
+
+Tabla 1: Pruebas de hipótesis 
+
+ **Prueba** |  **Tipo de variable** | 
+----------------------| ----------------------|
+*T student* | Binaria con continua 
+*Anova* | Categórica con continua
+*Chi-square* | Categórica con categórica 
+*R Pearson* | Continua con continua
+*Spearman* | Ordinal con continua/ordinal 
+*Kendall* | Ordinal con continua 
+
+- En los tamaños de efecto, su interpretación va a depender de la disciplina donde se esté desarrollando nuestro análisis (por lo general en ciencias sociales son bajos). Abajo unos de referencia
+
+Tabla 2: Tamaño efecto
+
+**Prueba** | Pequeño | Mediano | Grande
+-----------|---------|---------|--------|
+*D Cohen* | 0.10     | 0.3     | 0.80
+*Eta cuadrado* | 0.02 | 0.15 | 0.35
+*V de Cramer y Phi* | 0.1 | 0.5 | 0.95
+*Correlacion R* | 0.1 |  0.3 | 0.5 
+
+- Para las distintas pruebas y tamaño efecto utilizaremos principalmente las librerías `psych` y `sjstats`. 
+
+#### 5.2.1 T student
+
+- Variables: Se asocia una variable binaria con continua
+
+- Condiciones
+  - Se utiliza para muestras pequeñas (100 > n > 30). 
+  - Homocedasticidad, para el cual se ocupa *Test F de Levene*
+
+- Tamaño efecto:  es *D Cohen*
+
+**Test F de Levene**
+
+Primero testeamos homocedasticidad (homogeneidad de varianzas) por el paquete `car`. Se busca aceptar la hipótesis nula
+
+
+```{r}
+leveneTest(merit ~ sexo, center=mean, data = data)
+
+#Acepto la H0, por lo que no hay problemas de heterocedasticidad. Por ello se debe incluir var.equal = TRUE
+#En caso contrario se pone en el argumento var.equal = FALSE
+```
+
+
+
+**T Student (dos colas)** 
+
+Su centro es aceptar la hipótesis alternativa de diferencia entre parámetros poblacionales.  
+
+
+>$H_0$: El nivel de merito de los hombres es igual al de las mujeres.
+
+>$H_1$: El nivel de merito de los hombres son distintos a los de las mujeres.
+
+
+```{r}
+#Dos colas
+t.test(merit ~ sexo, data=data, #variable numérica - variable categórica binaria
+         conf.level=0.95, var.equal = TRUE)
+``` 
+
+
+**T Student (una cola)**
+
+
+Su centro es aceptar la hipótesis alternativa, donde se indica la dirección de la diferencia (si es mayor o menor)
+
+
+>$H_0$: El nivel de merito de los hombres es igual al de las mujeres.
+
+>$H_1$: El merito de los hombres es mayor que en las mujeres.
+
+
+```{r}
+t.test(merit ~ sexo, data=data, #variable numérica - variable categórica binaria
+         conf.level=0.95,alternative="greater",var.equal = TRUE)
+
+#Si queremos probar una hipótesis donde H1 sea menor, en alternative= "less"
+
+```
+
+
+**D Cohen**
+
+```{r}
+cohen.d(data, "sexo",alpha=.05,std=TRUE) 
+```
+
+#### 5.2.2 Anova
+
+- Variables: Se asocian categóricas con continuas
+
+- Su lógica es comparar si varias poblaciones tienen la misma media poblacional en relación a sus medias muestrales. 
+
+- Condiciones: 
+  - Homocedasticidad, para el cual se ocupa *Test F de Levene*
+  - Se utiliza cuando tenemos más de dos grupos (a diferencia con *t student*). Es decir, una de las variables ya no es binaria. 
+  - Si utilizáramos de igual forma t student es más fácil rechazar la hipótesis nula (con lo que caeríamos en un error de tipo I).
+
+- Tamaño efecto: *Eta cuadrado*
+
+**Test F de Levene**
+
+Primero testeamos homocedasticidad (homogeneidad de varianzas) por el paquete `car`. Se busca aceptar la hipótesis nula
+
+```{r}
+leveneTest(merit ~ t_edad, center=mean, data = data)
+
+#Rechazo H0, por lo que hay de heterocedasticidad. 
+#Anova del paquete car hace el ajuste automaticamente
+#Por ello señala Anova tipo III
+```
+
+
+**Anova**
+
+>$H_1$: El merito medio son distintos según su tramo de edad.
+
+```{r}
+
+modelo<- lm(merit ~ t_edad, data = data) #genero el modelo a estimar
+
+anova <- Anova(modelo, type = 3) #Estimo anova (paquete car)
+anova
+```
+
+
+**Tabla de resultados** 
+
+  
+```{r,echo=FALSE}
+kable(anova,caption="Anova para tramos de edad",digits = 3)
+```
+
+
+**Eta cuadrado** 
+
+
+```{r}
+eta_sq(anova) #Tamaño efecto
+
+```
+
+#### 5.2.3 Chi-square 
+
+- Variables: categóricas con categóricas
+
+- Condiciones
+  - Las variables ordinales deben ser con pocas categorías (menos de 7). 
+
+- Tamaño efecto 
+  - *Phi*: tabla 2x2 (dos variables binarias)
+  - *V de Cramer*: tabla 3x2 o más (dos variables con ordinales)
+
+**Chi-square**
+  
+Para solicitar estadístico chi-cuadrado y tamaño efecto debo guardar la tabla bivariada con frecuencias observadas como un objeto
+
+```{r}
+
+t_sexo <- table(data$sexo,data$edcine,exclude = FALSE)
+
+chisq.test(t_sexo) 
+
+#Si guardamos el test como objeto podemos obtener otros datos
+chi_sexo=chisq.test(t_sexo) 
+names(chi_sexo)
+chi_sexo$observed   # observed counts 
+chi_sexo$expected   # expected counts under the null
+
+```
+
+
+
+**V de Cramer**
+
+En este caso se utiliza V de Cramer pues asociamos sexo con nivel educacional. 
+
+```{r}
+cramer(t_sexo)
+```
+
+
+#### 5.2.4 R Pearson
+
+- Variables: describe y mide la fuerza de la relación lineal entre dos variable cuantitativas continuas
+
+- Tamaño efecto: *R*.Este coeficiente asume valoresde -1 a 1, donde 
+- 1 correlación negativa perfecta y +1 correlación positiva perfecta. 
+
+- Condiciones
+  - Distribución normal de cada variable, que es testeado por test *Test Shapiro Wilk*
+
+El calculo de asociación y tamaño efecto de variables **cuantitativas** (Pearson, Spearman y Kendall) se realiza a través del paquete `ggpubr`. A su vez este nos permite graficar la asociación. 
+
+En R hay dos funciones para la correlación cor() y cor.test()
+    - cor(): nos indica el coeficiente de correlación
+    - cor.test(): es un test de asociación entre variables que nos indica el coeficiente de correlación y el nivel de significancia del test
+
+<div class="alert alert-info">   
+cor(x, y, method = c("pearson", "kendall", "spearman"))
+cor.test(x, y, method=c("pearson", "kendall", "spearman"))
+
+</div>
+
+**Shapiro-Wilk**
+
+```{r}
+# Shapiro-Wilk normality test para merit
+shapiro.test(data$merit) 
+
+# Shapiro-Wilk normality test para ess
+shapiro.test(data$ess)
+```
+
+**Test de correlación**
+
+```{r}
+cor <- cor.test(data$merit, data$ess, method = "pearson")
+cor #Una correlación muy baja y un valor p que hace aceptar la H0
+```
+
+ 
+**Graficar**
+
+```{r}
+ggscatter(data, x = "merit", y = "ess", add = "reg.line",conf.int = TRUE, add.params = list(color = "black", fill = "lightgrey"), cor.coef = TRUE, cor.method = "pearson", 
+                         xlab = "Merito", ylab = "Ess", size = 4)
+
+```
